@@ -22,7 +22,6 @@ html,body{background:var(--bg);color:var(--text);font-family:'Titillium Web',-ap
 body{padding-top:var(--safe-t)}
 .mono{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-variant-numeric:tabular-nums}
 
-/* Header */
 header{position:sticky;top:0;z-index:20;background:rgba(11,13,16,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:10px 14px 8px}
 .hrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
 h1{font-size:15px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
@@ -34,13 +33,11 @@ h1 span{color:var(--red)}
 #flagBanner.show{display:block}
 #flagBanner.yellow{background:var(--yellow);color:#000}
 #flagBanner.red{background:var(--red);color:#fff}
-#flagBanner.sc{background:var(--yellow);color:#000}
 #flagBanner.green{background:var(--green);color:#000}
 #liveDot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
 #liveDot.on{background:var(--green);animation:pulse 2s infinite}
 @keyframes pulse{50%{opacity:.35}}
 
-/* Panels */
 main{padding:10px 10px calc(74px + var(--safe-b))}
 .view{display:none}
 .view.active{display:block}
@@ -61,12 +58,17 @@ main{padding:10px 10px calc(74px + var(--safe-b))}
 .leaderTag{color:var(--purple);font-weight:700;font-size:12px;text-align:right}
 .fullname{font-size:10px;color:var(--faint);display:block;margin-top:-2px}
 
+/* Track map */
+#mapWrap{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px;position:relative}
+#trackCanvas{width:100%;height:62vh;display:block}
+#mapHint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:13px;text-align:center;padding:20px;pointer-events:none}
+#mapLegend{margin-top:8px;font-size:11px;color:var(--faint);text-align:center}
+
 /* Radio */
 .filters{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px}
 .fbtn{border:1px solid var(--line);background:var(--panel);color:var(--dim);border-radius:16px;padding:5px 13px;font-size:12px;font-weight:700;font-family:inherit;white-space:nowrap}
 .fbtn.on{background:var(--text);color:#000;border-color:var(--text)}
 .radioCard{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:6px}
-.radioCard.new{border-color:var(--green)}
 .rhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
 .rhead b{font-size:14px;letter-spacing:.04em}
 .rhead time{font-size:11px;color:var(--dim)}
@@ -82,12 +84,11 @@ audio{width:100%;height:34px}
 
 .empty{color:var(--faint);text-align:center;padding:36px 20px;font-size:13px;line-height:1.6}
 
-/* Tab bar */
 nav{position:fixed;bottom:0;left:0;right:0;z-index:20;display:flex;background:rgba(11,13,16,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding-bottom:var(--safe-b)}
-nav button{flex:1;background:none;border:none;color:var(--faint);font-family:inherit;font-weight:700;font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding:13px 0 11px;position:relative}
+nav button{flex:1;background:none;border:none;color:var(--faint);font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:13px 0 11px;position:relative}
 nav button.on{color:var(--text)}
 nav button.on::before{content:'';position:absolute;top:0;left:25%;right:25%;height:2px;background:var(--red)}
-nav button .badge{position:absolute;top:7px;right:18%;min-width:16px;height:16px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;line-height:16px;padding:0 4px}
+nav button .badge{position:absolute;top:7px;right:12%;min-width:16px;height:16px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;line-height:16px;padding:0 4px}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -107,6 +108,13 @@ nav button .badge{position:absolute;top:7px;right:18%;min-width:16px;height:16px
 
 <main>
   <section id="v-tower" class="view active"><div id="board" class="empty">Loading timing…</div></section>
+  <section id="v-map" class="view">
+    <div id="mapWrap">
+      <canvas id="trackCanvas"></canvas>
+      <div id="mapHint">Building track outline…</div>
+    </div>
+    <div id="mapLegend">Dots move every ~20s · ring = Hamilton</div>
+  </section>
   <section id="v-radio" class="view">
     <div class="filters" id="radioFilters"></div>
     <div id="radioList" class="empty">Loading radio…</div>
@@ -116,6 +124,7 @@ nav button .badge{position:absolute;top:7px;right:18%;min-width:16px;height:16px
 
 <nav>
   <button class="on" data-v="tower">Tower</button>
+  <button data-v="map">Map</button>
   <button data-v="radio">Radio<span class="badge" id="radioBadge" style="display:none"></span></button>
   <button data-v="rc">Control</button>
 </nav>
@@ -123,13 +132,13 @@ nav button .badge{position:absolute;top:7px;right:18%;min-width:16px;height:16px
 <script>
 const API='https://api.openf1.org/v1';
 const S={drivers:{},positions:{},intervals:{},stints:{},radio:[],rc:[],weather:null,
-         sessionKey:null,sessionLive:false,radioFilter:'ALL',seenRadio:new Set(),unseen:0,lastUpdate:0,
-         favDriver:44};
+         session:null,sessionKey:null,sessionLive:false,radioFilter:'ALL',seenRadio:new Set(),unseen:0,
+         lastUpdate:0,favDriver:44,
+         track:[],trackOrdered:false,cars:{}};
 
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-
 async function get(path){
   const r=await fetch(`${API}${path}`);
   if(!r.ok)throw new Error(r.status);
@@ -141,7 +150,7 @@ async function initSession(){
   try{
     const s=(await get('/sessions?session_key=latest'))[0];
     if(!s)return;
-    S.sessionKey=s.session_key;
+    S.session=s; S.sessionKey=s.session_key;
     $('sessionName').textContent=`${s.session_name} · ${s.circuit_short_name}`;
     const now=Date.now(), st=Date.parse(s.date_start)-30*60e3, en=Date.parse(s.date_end)+30*60e3;
     S.sessionLive=now>=st&&now<=en;
@@ -149,25 +158,65 @@ async function initSession(){
     const drs=await get(`/drivers?session_key=${S.sessionKey}`);
     drs.forEach(d=>S.drivers[d.driver_number]=d);
     buildFilters();
+    await sleep(400);
+    initTrack();
   }catch(e){ $('sessionName').textContent='API unreachable'; }
 }
 
-/* ---------- polling (budget: ≤30 req/min) ---------- */
-/* fast cycle every 20s: position, intervals, stints, team_radio, race_control = 15/min
-   slow cycle every 60s: weather (+1/min). Total ≈16/min. */
+/* ---------- track outline: one driver's trace over ~2.5 min ---------- */
+async function initTrack(){
+  const t0=Date.parse(S.session.date_start);
+  const windows=[[6,8.5],[20,22.5],[40,42.5]]; // minutes after session start
+  const candidates=[S.favDriver,...Object.keys(S.drivers)].slice(0,3);
+  for(const drv of candidates){
+    for(const [a,b] of windows){
+      const from=new Date(t0+a*60e3).toISOString().slice(0,19);
+      const to=new Date(t0+b*60e3).toISOString().slice(0,19);
+      try{
+        const pts=await get(`/location?session_key=${S.sessionKey}&driver_number=${drv}&date>${from}&date<${to}`);
+        await sleep(400);
+        const moving=pts.filter(p=>p.x!==0||p.y!==0);
+        if(moving.length>200){
+          S.track=moving.map(p=>[p.x,p.y]);
+          S.trackOrdered=true;
+          $('mapHint').style.display='none';
+          drawMap();
+          return;
+        }
+      }catch(e){}
+    }
+  }
+  // fallback: accumulate live points as they come in
+  $('mapHint').textContent='No trace yet — the outline will draw itself as cars run laps.';
+}
+
+/* ---------- polling (budget ≈19 req/min) ---------- */
 async function fastCycle(){
   if(!S.sessionKey)return;
   const q=`?session_key=${S.sessionKey}`;
+  const since=new Date(Date.now()-25000).toISOString().slice(0,19);
   const calls=[
     ['position',q, d=>{d.forEach(p=>{const c=S.positions[p.driver_number];if(!c||p.date>c.date)S.positions[p.driver_number]=p;});}],
     ['intervals',q, d=>{d.forEach(i=>{const c=S.intervals[i.driver_number];if(!c||i.date>c.date)S.intervals[i.driver_number]=i;});}],
     ['stints',q, d=>{d.forEach(st=>{const c=S.stints[st.driver_number];if(!c||st.stint_number>=c.stint_number)S.stints[st.driver_number]=st;});}],
     ['team_radio',q, d=>{S.radio=d;}],
     ['race_control',q, d=>{S.rc=d;}],
+    ['location',`${q}&date>${since}`, d=>{
+        d.forEach(p=>{
+          if(p.x===0&&p.y===0)return;
+          const c=S.cars[p.driver_number];
+          if(!c||p.date>c.date)S.cars[p.driver_number]=p;
+        });
+        if(!S.trackOrdered){ // build outline from the point cloud
+          d.forEach((p,i)=>{if((p.x||p.y)&&i%3===0)S.track.push([p.x,p.y]);});
+          if(S.track.length>4000)S.track=S.track.slice(-4000);
+          if(S.track.length>300)$('mapHint').style.display='none';
+        }
+      }],
   ];
   for(const [ep,qs,apply] of calls){
     try{ apply(await get(`/${ep}${qs}`)); }catch(e){}
-    await sleep(450); // stay under 3 req/s
+    await sleep(450);
   }
   S.lastUpdate=Date.now();
   render();
@@ -186,17 +235,62 @@ async function slowCycle(){
   renderMeta();
 }
 
+/* ---------- track map drawing ---------- */
+function drawMap(){
+  const cv=$('trackCanvas');
+  const w=cv.clientWidth,h=cv.clientHeight;
+  if(!w)return;
+  const dpr=window.devicePixelRatio||1;
+  if(cv.width!==Math.round(w*dpr)){cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);}
+  const ctx=cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+  const pts=S.track;
+  if(pts.length<50)return;
+  let minX=1/0,maxX=-1/0,minY=1/0,maxY=-1/0;
+  for(const [x,y] of pts){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+  const pad=26, sc=Math.min((w-pad*2)/(maxX-minX||1),(h-pad*2)/(maxY-minY||1));
+  const ox=(w-(maxX-minX)*sc)/2, oy=(h-(maxY-minY)*sc)/2;
+  const M=(x,y)=>[ox+(x-minX)*sc, h-(oy+(y-minY)*sc)]; // invert y
+
+  if(S.trackOrdered){
+    ctx.beginPath();
+    pts.forEach(([x,y],i)=>{const [px,py]=M(x,y); i?ctx.lineTo(px,py):ctx.moveTo(px,py);});
+    ctx.strokeStyle='#2b313b'; ctx.lineWidth=9; ctx.lineJoin='round'; ctx.lineCap='round'; ctx.stroke();
+    ctx.strokeStyle='#454d5a'; ctx.lineWidth=1.5; ctx.stroke();
+  }else{
+    ctx.fillStyle='#2b313b';
+    for(const [x,y] of pts){const [px,py]=M(x,y); ctx.fillRect(px-1.5,py-1.5,3,3);}
+  }
+
+  // cars (only points fresher than 90s)
+  const cutoff=Date.now()-90000;
+  ctx.font='700 10px ui-monospace,Menlo,monospace';
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  for(const [num,p] of Object.entries(S.cars)){
+    if(Date.parse(p.date)<cutoff)continue;
+    const d=S.drivers[num]||{};
+    const col=d.team_colour?'#'+d.team_colour:'#8b93a1';
+    const [px,py]=M(p.x,p.y);
+    ctx.beginPath(); ctx.arc(px,py,5,0,7); ctx.fillStyle=col; ctx.fill();
+    if(Number(num)===S.favDriver){
+      ctx.beginPath(); ctx.arc(px,py,8,0,7); ctx.strokeStyle='#fff'; ctx.lineWidth=1.5; ctx.stroke();
+    }
+    ctx.fillStyle='#e8eaed';
+    ctx.fillText(d.name_acronym||num, px+9, py);
+  }
+}
+
 /* ---------- rendering ---------- */
 function fmtGap(v){
   if(v==null||v==='')return '–';
-  if(typeof v==='string')return v;               // "+1 LAP" etc
+  if(typeof v==='string')return v;
   return (v>=0?'+':'')+v.toFixed(3);
 }
-function render(){renderMeta();renderBoard();renderRadio();renderRC();}
+function render(){renderMeta();renderBoard();renderRadio();renderRC();drawMap();}
 
 function renderMeta(){
-  const dot=$('liveDot');
-  dot.classList.toggle('on',S.sessionLive);
+  $('liveDot').classList.toggle('on',S.sessionLive);
   $('updAgo').textContent=S.lastUpdate?`${Math.round((Date.now()-S.lastUpdate)/1000)}s ago`:'–';
   if(S.weather){
     $('weatherChip').style.display='';
@@ -221,7 +315,6 @@ function renderBoard(){
     const st=S.stints[p.driver_number];
     const col=d.team_colour?'#'+d.team_colour:'var(--faint)';
     const comp=st?.compound||'';
-    const laps=st?(st.tyre_age_at_start||0):null; // age at start; live laps added below if lap data unknown
     const gapCell=p.position===1
       ? `<div class="leaderTag mono">LEADER</div>`
       : `<div class="gap mono">${esc(fmtGap(iv.interval))}<small>${esc(fmtGap(iv.gap_to_leader))} ldr</small></div>`;
@@ -251,7 +344,6 @@ function renderRadio(){
   if(S.radioFilter!=='ALL')list=list.filter(r=>String(r.driver_number)===S.radioFilter);
   const el=$('radioList');
   if(!list.length){el.innerHTML='<div class="empty">No radio clips for this session (yet).<br>F1 publishes only a selection, and some 2026 events get none.</div>';return;}
-  // count unseen for badge
   list.forEach(r=>{if(!S.seenRadio.has(r.recording_url)){S.unseen++;S.seenRadio.add(r.recording_url);}});
   if(document.querySelector('nav .on').dataset.v!=='radio'&&S.unseen>0){
     $('radioBadge').style.display='';$('radioBadge').textContent=S.unseen>9?'9+':S.unseen;
@@ -285,7 +377,9 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   b.classList.add('on');
   $('v-'+b.dataset.v).classList.add('active');
   if(b.dataset.v==='radio'){S.unseen=0;$('radioBadge').style.display='none';}
+  if(b.dataset.v==='map')drawMap();
 });
+window.addEventListener('resize',drawMap);
 
 /* ---------- boot ---------- */
 (async()=>{
@@ -295,7 +389,6 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
   setInterval(fastCycle,20000);
   setInterval(slowCycle,60000);
   setInterval(renderMeta,5000);
-  // pause polling when app is backgrounded to save battery/requests
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)fastCycle();});
 })();
 </script>
