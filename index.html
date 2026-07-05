@@ -84,6 +84,17 @@ audio{width:100%;height:34px}
 
 .empty{color:var(--faint);text-align:center;padding:36px 20px;font-size:13px;line-height:1.6}
 
+/* Watchalong dock */
+#dock{position:fixed;left:0;right:0;bottom:calc(48px + var(--safe-b));z-index:19;background:rgba(11,13,16,.97);backdrop-filter:blur(12px);border-top:1px solid var(--line)}
+#dockBar{display:flex;align-items:center;gap:8px;padding:7px 12px}
+#dockBar b{font-size:12px;letter-spacing:.04em;text-transform:uppercase;color:var(--dim);flex:1}
+.dockBtn{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:6px;padding:4px 12px;font-size:12px;font-weight:700;font-family:inherit}
+.dockBtn.on{background:var(--red);border-color:var(--red);color:#fff}
+#dockPlayer{display:none;padding:0 10px 10px}
+#dockPlayer.open{display:block}
+#dockPlayer iframe{width:100%;aspect-ratio:16/9;border:0;border-radius:8px;background:#000}
+body.dockOpen main{padding-bottom:calc(74px + 56.25vw + 60px + var(--safe-b))}
+
 nav{position:fixed;bottom:0;left:0;right:0;z-index:20;display:flex;background:rgba(11,13,16,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding-bottom:var(--safe-b)}
 nav button{flex:1;background:none;border:none;color:var(--faint);font-family:inherit;font-weight:700;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:13px 0 11px;position:relative}
 nav button.on{color:var(--text)}
@@ -121,6 +132,15 @@ nav button .badge{position:absolute;top:7px;right:12%;min-width:16px;height:16px
   </section>
   <section id="v-rc" class="view"><div id="rcList" class="empty">Loading race control…</div></section>
 </main>
+
+<div id="dock">
+  <div id="dockBar">
+    <b>P1 Watchalong</b>
+    <button class="dockBtn" id="btnYT">YouTube</button>
+    <button class="dockBtn" id="btnTW">Twitch</button>
+  </div>
+  <div id="dockPlayer"></div>
+</div>
 
 <nav>
   <button class="on" data-v="tower">Tower</button>
@@ -369,6 +389,31 @@ function renderRC(){
     return `<div class="rcCard ${esc(cls)}"><time>${t}${m.lap_number?` · Lap ${m.lap_number}`:''}</time>${esc(m.message||'')}</div>`;
   }).join('');
 }
+
+/* ---------- watchalong dock ---------- */
+const YT_CHANNEL='UCD5jAyCSDRR5yTgswfDbK8w'; // P1 with Matt & Tommy
+const TW_CHANNEL='mattp1tommy';
+let dockSrc=null;
+function setDock(src){
+  const player=$('dockPlayer');
+  if(dockSrc===src){ // toggle off
+    dockSrc=null; player.innerHTML=''; player.classList.remove('open');
+    document.body.classList.remove('dockOpen');
+    $('btnYT').classList.remove('on'); $('btnTW').classList.remove('on');
+    return;
+  }
+  dockSrc=src;
+  $('btnYT').classList.toggle('on',src==='yt');
+  $('btnTW').classList.toggle('on',src==='tw');
+  const url=src==='yt'
+    ? `https://www.youtube.com/embed/live_stream?channel=${YT_CHANNEL}&autoplay=1`
+    : `https://player.twitch.tv/?channel=${TW_CHANNEL}&parent=${location.hostname}&autoplay=true`;
+  player.innerHTML=`<iframe src="${url}" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>`;
+  player.classList.add('open');
+  document.body.classList.add('dockOpen');
+}
+$('btnYT').onclick=()=>setDock('yt');
+$('btnTW').onclick=()=>setDock('tw');
 
 /* ---------- tabs ---------- */
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
