@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0d10">
+<title>Pitwall</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@400;600;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0b0d10; --panel:#14171c; --panel2:#1b1f26; --line:#262b33;
+  --text:#e8eaed; --dim:#8b93a1; --faint:#59606d;
+  --purple:#b138dd; --green:#2ecc71; --yellow:#f1c40f; --red:#e0332c; --blue:#4aa8ff;
+  --soft:#e0332c; --medium:#f1c40f; --hard:#e8eaed; --inter:#2ecc71; --wet:#4aa8ff;
+  --safe-b:env(safe-area-inset-bottom,0px); --safe-t:env(safe-area-inset-top,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--text);font-family:'Titillium Web',-apple-system,sans-serif;overscroll-behavior-y:contain}
+body{padding-top:var(--safe-t)}
+.mono{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-variant-numeric:tabular-nums}
+
+/* Header */
+header{position:sticky;top:0;z-index:20;background:rgba(11,13,16,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:10px 14px 8px}
+.hrow{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+h1{font-size:15px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}
+h1 span{color:var(--red)}
+#sessionName{font-size:12px;color:var(--dim);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#metaRow{display:flex;gap:10px;margin-top:6px;font-size:11px;color:var(--dim);align-items:center;flex-wrap:wrap}
+.chip{background:var(--panel);border:1px solid var(--line);border-radius:5px;padding:2px 7px;display:inline-flex;gap:5px;align-items:center}
+#flagBanner{display:none;margin-top:8px;padding:6px 10px;border-radius:6px;font-weight:700;font-size:12px;letter-spacing:.05em;text-transform:uppercase;text-align:center}
+#flagBanner.show{display:block}
+#flagBanner.yellow{background:var(--yellow);color:#000}
+#flagBanner.red{background:var(--red);color:#fff}
+#flagBanner.sc{background:var(--yellow);color:#000}
+#flagBanner.green{background:var(--green);color:#000}
+#liveDot{width:7px;height:7px;border-radius:50%;background:var(--faint)}
+#liveDot.on{background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{50%{opacity:.35}}
+
+/* Panels */
+main{padding:10px 10px calc(74px + var(--safe-b))}
+.view{display:none}
+.view.active{display:block}
+
+/* Leaderboard */
+.row{display:grid;grid-template-columns:26px 4px 44px 1fr 56px 74px;align-items:center;gap:8px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px 8px 8px;margin-bottom:5px}
+.row .pos{font-weight:900;font-size:15px;text-align:center;color:var(--dim)}
+.row:nth-child(-n+3) .pos{color:var(--text)}
+.teambar{width:4px;height:26px;border-radius:2px;background:var(--faint)}
+.tla{font-weight:900;font-size:15px;letter-spacing:.04em}
+.stintbox{display:flex;align-items:center;gap:5px;justify-self:end}
+.tyre{width:16px;height:16px;border-radius:50%;border:2.5px solid var(--faint);display:inline-block}
+.tyre.SOFT{border-color:var(--soft)} .tyre.MEDIUM{border-color:var(--medium)}
+.tyre.HARD{border-color:var(--hard)} .tyre.INTERMEDIATE{border-color:var(--inter)} .tyre.WET{border-color:var(--wet)}
+.age{font-size:11px;color:var(--dim)}
+.gap{font-size:12px;text-align:right;color:var(--text)}
+.gap small{display:block;color:var(--faint);font-size:10px}
+.leaderTag{color:var(--purple);font-weight:700;font-size:12px;text-align:right}
+.fullname{font-size:10px;color:var(--faint);display:block;margin-top:-2px}
+
+/* Radio */
+.filters{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px}
+.fbtn{border:1px solid var(--line);background:var(--panel);color:var(--dim);border-radius:16px;padding:5px 13px;font-size:12px;font-weight:700;font-family:inherit;white-space:nowrap}
+.fbtn.on{background:var(--text);color:#000;border-color:var(--text)}
+.radioCard{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:6px}
+.radioCard.new{border-color:var(--green)}
+.rhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.rhead b{font-size:14px;letter-spacing:.04em}
+.rhead time{font-size:11px;color:var(--dim)}
+audio{width:100%;height:34px}
+
+/* Race control */
+.rcCard{background:var(--panel);border-left:3px solid var(--faint);border-radius:6px;padding:8px 11px;margin-bottom:6px;font-size:13px;line-height:1.4}
+.rcCard time{display:block;font-size:10px;color:var(--faint);margin-bottom:2px}
+.rcCard.YELLOW,.rcCard.DOUBLEYELLOW{border-left-color:var(--yellow)}
+.rcCard.RED{border-left-color:var(--red)}
+.rcCard.GREEN,.rcCard.CLEAR{border-left-color:var(--green)}
+.rcCard.BLUE{border-left-color:var(--blue)}
+
+.empty{color:var(--faint);text-align:center;padding:36px 20px;font-size:13px;line-height:1.6}
+
+/* Tab bar */
+nav{position:fixed;bottom:0;left:0;right:0;z-index:20;display:flex;background:rgba(11,13,16,.94);backdrop-filter:blur(12px);border-top:1px solid var(--line);padding-bottom:var(--safe-b)}
+nav button{flex:1;background:none;border:none;color:var(--faint);font-family:inherit;font-weight:700;font-size:12px;letter-spacing:.05em;text-transform:uppercase;padding:13px 0 11px;position:relative}
+nav button.on{color:var(--text)}
+nav button.on::before{content:'';position:absolute;top:0;left:25%;right:25%;height:2px;background:var(--red)}
+nav button .badge{position:absolute;top:7px;right:18%;min-width:16px;height:16px;border-radius:8px;background:var(--red);color:#fff;font-size:10px;line-height:16px;padding:0 4px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="hrow">
+    <h1>PIT<span>WALL</span></h1>
+    <div id="sessionName">connecting…</div>
+  </div>
+  <div id="metaRow">
+    <span class="chip"><span id="liveDot"></span><span id="updAgo">–</span></span>
+    <span class="chip" id="weatherChip" style="display:none"></span>
+    <span class="chip" id="lapChip" style="display:none"></span>
+  </div>
+  <div id="flagBanner"></div>
+</header>
+
+<main>
+  <section id="v-tower" class="view active"><div id="board" class="empty">Loading timing…</div></section>
+  <section id="v-radio" class="view">
+    <div class="filters" id="radioFilters"></div>
+    <div id="radioList" class="empty">Loading radio…</div>
+  </section>
+  <section id="v-rc" class="view"><div id="rcList" class="empty">Loading race control…</div></section>
+</main>
+
+<nav>
+  <button class="on" data-v="tower">Tower</button>
+  <button data-v="radio">Radio<span class="badge" id="radioBadge" style="display:none"></span></button>
+  <button data-v="rc">Control</button>
+</nav>
+
+<script>
+const API='https://api.openf1.org/v1';
+const S={drivers:{},positions:{},intervals:{},stints:{},radio:[],rc:[],weather:null,
+         sessionKey:null,sessionLive:false,radioFilter:'ALL',seenRadio:new Set(),unseen:0,lastUpdate:0,
+         favDriver:44};
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function get(path){
+  const r=await fetch(`${API}${path}`);
+  if(!r.ok)throw new Error(r.status);
+  return r.json();
+}
+
+/* ---------- session bootstrap ---------- */
+async function initSession(){
+  try{
+    const s=(await get('/sessions?session_key=latest'))[0];
+    if(!s)return;
+    S.sessionKey=s.session_key;
+    $('sessionName').textContent=`${s.session_name} · ${s.circuit_short_name}`;
+    const now=Date.now(), st=Date.parse(s.date_start)-30*60e3, en=Date.parse(s.date_end)+30*60e3;
+    S.sessionLive=now>=st&&now<=en;
+    await sleep(400);
+    const drs=await get(`/drivers?session_key=${S.sessionKey}`);
+    drs.forEach(d=>S.drivers[d.driver_number]=d);
+    buildFilters();
+  }catch(e){ $('sessionName').textContent='API unreachable'; }
+}
+
+/* ---------- polling (budget: ≤30 req/min) ---------- */
+/* fast cycle every 20s: position, intervals, stints, team_radio, race_control = 15/min
+   slow cycle every 60s: weather (+1/min). Total ≈16/min. */
+async function fastCycle(){
+  if(!S.sessionKey)return;
+  const q=`?session_key=${S.sessionKey}`;
+  const calls=[
+    ['position',q, d=>{d.forEach(p=>{const c=S.positions[p.driver_number];if(!c||p.date>c.date)S.positions[p.driver_number]=p;});}],
+    ['intervals',q, d=>{d.forEach(i=>{const c=S.intervals[i.driver_number];if(!c||i.date>c.date)S.intervals[i.driver_number]=i;});}],
+    ['stints',q, d=>{d.forEach(st=>{const c=S.stints[st.driver_number];if(!c||st.stint_number>=c.stint_number)S.stints[st.driver_number]=st;});}],
+    ['team_radio',q, d=>{S.radio=d;}],
+    ['race_control',q, d=>{S.rc=d;}],
+  ];
+  for(const [ep,qs,apply] of calls){
+    try{ apply(await get(`/${ep}${qs}`)); }catch(e){}
+    await sleep(450); // stay under 3 req/s
+  }
+  S.lastUpdate=Date.now();
+  render();
+}
+async function slowCycle(){
+  if(!S.sessionKey)return;
+  try{
+    const w=await get(`/weather?session_key=${S.sessionKey}`);
+    S.weather=w[w.length-1]||null;
+  }catch(e){}
+  try{
+    const laps=await get(`/laps?session_key=${S.sessionKey}&driver_number=${S.favDriver}`);
+    const last=laps[laps.length-1];
+    if(last){$('lapChip').style.display='';$('lapChip').textContent=`Lap ${last.lap_number}`;}
+  }catch(e){}
+  renderMeta();
+}
+
+/* ---------- rendering ---------- */
+function fmtGap(v){
+  if(v==null||v==='')return '–';
+  if(typeof v==='string')return v;               // "+1 LAP" etc
+  return (v>=0?'+':'')+v.toFixed(3);
+}
+function render(){renderMeta();renderBoard();renderRadio();renderRC();}
+
+function renderMeta(){
+  const dot=$('liveDot');
+  dot.classList.toggle('on',S.sessionLive);
+  $('updAgo').textContent=S.lastUpdate?`${Math.round((Date.now()-S.lastUpdate)/1000)}s ago`:'–';
+  if(S.weather){
+    $('weatherChip').style.display='';
+    $('weatherChip').textContent=`🌡 ${Math.round(S.weather.track_temperature)}°C track · ${Math.round(S.weather.air_temperature)}°C air${S.weather.rainfall?' · 🌧':''}`;
+  }
+  const recent=S.rc.slice(-6).reverse();
+  const banner=$('flagBanner');
+  const hot=recent.find(m=>['RED','YELLOW','DOUBLE YELLOW'].includes(m.flag)||/SAFETY CAR|VIRTUAL/.test(m.message||''));
+  const clear=recent[0]&&(recent[0].flag==='GREEN'||recent[0].flag==='CLEAR');
+  if(hot&&!clear){
+    banner.className='show '+(hot.flag==='RED'?'red':'yellow');
+    banner.textContent=hot.message||hot.flag;
+  }else banner.className='';
+}
+
+function renderBoard(){
+  const rows=Object.values(S.positions).sort((a,b)=>a.position-b.position);
+  if(!rows.length){$('board').innerHTML='<div class="empty">No timing data yet.<br>This fills in once a session is running (or shows the last session).</div>';return;}
+  $('board').innerHTML=rows.map(p=>{
+    const d=S.drivers[p.driver_number]||{};
+    const iv=S.intervals[p.driver_number]||{};
+    const st=S.stints[p.driver_number];
+    const col=d.team_colour?'#'+d.team_colour:'var(--faint)';
+    const comp=st?.compound||'';
+    const laps=st?(st.tyre_age_at_start||0):null; // age at start; live laps added below if lap data unknown
+    const gapCell=p.position===1
+      ? `<div class="leaderTag mono">LEADER</div>`
+      : `<div class="gap mono">${esc(fmtGap(iv.interval))}<small>${esc(fmtGap(iv.gap_to_leader))} ldr</small></div>`;
+    return `<div class="row">
+      <div class="pos mono">${p.position}</div>
+      <div class="teambar" style="background:${col}"></div>
+      <div><span class="tla" style="color:${col}">${esc(d.name_acronym||('#'+p.driver_number))}</span>
+        <span class="fullname">${esc(d.team_name||'')}</span></div>
+      <div></div>
+      <div class="stintbox">${comp?`<span class="tyre ${comp}"></span><span class="age mono">${st.stint_number>1?'S'+st.stint_number:''}</span>`:''}</div>
+      ${gapCell}
+    </div>`;
+  }).join('');
+}
+
+function buildFilters(){
+  const favs=['ALL',String(S.favDriver),...Object.keys(S.drivers).filter(n=>n!=S.favDriver)];
+  $('radioFilters').innerHTML=favs.map(f=>{
+    const label=f==='ALL'?'All':(S.drivers[f]?.name_acronym||f);
+    return `<button class="fbtn ${S.radioFilter===f?'on':''}" data-f="${f}">${esc(label)}</button>`;
+  }).join('');
+  $('radioFilters').querySelectorAll('.fbtn').forEach(b=>b.onclick=()=>{S.radioFilter=b.dataset.f;buildFilters();renderRadio();});
+}
+
+function renderRadio(){
+  let list=[...S.radio].reverse();
+  if(S.radioFilter!=='ALL')list=list.filter(r=>String(r.driver_number)===S.radioFilter);
+  const el=$('radioList');
+  if(!list.length){el.innerHTML='<div class="empty">No radio clips for this session (yet).<br>F1 publishes only a selection, and some 2026 events get none.</div>';return;}
+  // count unseen for badge
+  list.forEach(r=>{if(!S.seenRadio.has(r.recording_url)){S.unseen++;S.seenRadio.add(r.recording_url);}});
+  if(document.querySelector('nav .on').dataset.v!=='radio'&&S.unseen>0){
+    $('radioBadge').style.display='';$('radioBadge').textContent=S.unseen>9?'9+':S.unseen;
+  }
+  el.innerHTML=list.slice(0,40).map(r=>{
+    const d=S.drivers[r.driver_number]||{};
+    const col=d.team_colour?'#'+d.team_colour:'var(--text)';
+    const t=new Date(r.date).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    return `<div class="radioCard">
+      <div class="rhead"><b style="color:${col}">${esc(d.name_acronym||('#'+r.driver_number))}</b><time>${t}</time></div>
+      <audio controls preload="none" src="${esc(r.recording_url)}"></audio>
+    </div>`;
+  }).join('');
+}
+
+function renderRC(){
+  const el=$('rcList');
+  const list=[...S.rc].reverse().slice(0,60);
+  if(!list.length){el.innerHTML='<div class="empty">No race control messages yet.</div>';return;}
+  el.innerHTML=list.map(m=>{
+    const t=new Date(m.date).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const cls=(m.flag||'').replace(' ','');
+    return `<div class="rcCard ${esc(cls)}"><time>${t}${m.lap_number?` · Lap ${m.lap_number}`:''}</time>${esc(m.message||'')}</div>`;
+  }).join('');
+}
+
+/* ---------- tabs ---------- */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  b.classList.add('on');
+  $('v-'+b.dataset.v).classList.add('active');
+  if(b.dataset.v==='radio'){S.unseen=0;$('radioBadge').style.display='none';}
+});
+
+/* ---------- boot ---------- */
+(async()=>{
+  await initSession();
+  await fastCycle();
+  await slowCycle();
+  setInterval(fastCycle,20000);
+  setInterval(slowCycle,60000);
+  setInterval(renderMeta,5000);
+  // pause polling when app is backgrounded to save battery/requests
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)fastCycle();});
+})();
+</script>
+</body>
+</html>
