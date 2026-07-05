@@ -1,2 +1,2 @@
 # Pitwall
-Assistant during races
+Assistant during races with coms
